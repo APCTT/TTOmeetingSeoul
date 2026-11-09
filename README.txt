@@ -9,7 +9,6 @@ TTO Network Seoul 2026 – Offline Web App
 Items to confirm before circulation:
 - STEPI contact and technical visit pickup time/location.
 - Hotel allocation for each participant.
-- Aiden airport bus + taxi transfer route, which is provisional.
 - Day 1 registration time.
 
 No organizer logos are included because official artwork was not provided.
@@ -19,3 +18,5 @@ Weather: static forecast snapshot checked 9 Nov 2026, cached offline; live forec
 Weather: Open-Meteo forecast for 17-18 November 2026, refreshed when online every 3 hours and saved in localStorage for offline use. If the API is unavailable or both dates are not in forecast range, cached data is shown; otherwise no invented forecast is displayed.
 
 Version 4: Added separate k.ride App Store and Google Play download QR codes and links; service-worker cache updated.
+
+Version 5 (9 Nov 2026): Hotel-specific airport bus guidance: Riviera 6006 / Cheongdam Xi; Aiden 6703 / Nonhyeon-dong (Sunshine Hotel). Official operator route-map/timetable links, stop NAVER Map links, fare and terminal boarding bays. Cache version v5.

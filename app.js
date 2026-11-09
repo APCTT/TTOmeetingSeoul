@@ -1,0 +1,50 @@
+const hotels={riviera:{name:'Hotel Riviera Cheongdam',ko:'호텔 리베라 청담',address:'737 Yeongdong-daero, Gangnam-gu, Seoul',kr:'서울특별시 강남구 영동대로 737',stop:'Prima Hotel / Entra Hotel (프리마호텔·엔트라호텔)',detail:'Take bus 6006 and alight at Prima Hotel / Entra Hotel, near Riviera Hotel. Confirm the exact stop with the driver and follow the hotel map.',note:'Bus 6006 serves the Riviera Hotel area.',query:'호텔 리베라 청담'},aiden:{name:'Aiden by Best Western Cheongdam',ko:'에이든 바이 베스트웨스턴 청담',address:'216 Dosan-daero, Gangnam-gu, Seoul',kr:'서울특별시 강남구 도산대로 216',stop:'Apgujeong Station / Hyundai Apartment (압구정역·현대아파트)',detail:'Take bus 6006 toward Apgujeong, then use a local taxi to reach the hotel. This is NOT a door-to-door bus route. Additional taxi fare applies.',note:'The airport-bus-to-hotel transfer has not been verified as the shortest route. Check a live map before travelling.',query:'에이든 바이 베스트웨스턴 청담'}};
+let selected=localStorage.getItem('tto-hotel')||'riviera';if(!hotels[selected])selected='riviera';
+const map=(q)=>'https://map.naver.com/p/search/'+encodeURIComponent(q);
+function render(){let h=hotels[selected];document.querySelectorAll('[data-hotel]').forEach(b=>b.classList.toggle('active',b.dataset.hotel===selected));document.getElementById('hotelInfo').innerHTML=`<h3>${h.name}</h3><p class="muted">${h.address}</p><div class="korean">${h.ko}<br>${h.kr}</div><div class="actions"><button id="copyHotel">Copy Korean address</button><a class="button secondary" href="${map(h.query)}" target="_blank" rel="noopener">Open NAVER Map ↗</a></div>`;document.getElementById('busStop').innerHTML=`<div class="mini"><small>RECOMMENDED ALIGHTING STOP</small><strong>${h.stop}</strong><p>${h.detail}</p></div><p class="muted">${h.note}</p>`;document.getElementById('copyHotel').onclick=()=>copyText(h.ko+', '+h.kr)}
+document.querySelectorAll('[data-hotel]').forEach(b=>b.onclick=()=>{selected=b.dataset.hotel;localStorage.setItem('tto-hotel',selected);render()});render();
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2400)}
+async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Address copied')}catch(e){const a=document.createElement('textarea');a.value=t;document.body.append(a);a.select();document.execCommand('copy');a.remove();toast('Address copied')}}
+function connection(){const e=document.getElementById('net');e.textContent=navigator.onLine?'● Online':'● Offline';e.style.color=navigator.onLine?'#b8f7d6':'#ffe5b4'}window.addEventListener('online',connection);window.addEventListener('offline',connection);connection();
+const state=document.getElementById('cacheState');async function checkCache(){if(!('serviceWorker'in navigator)){state.textContent='Offline mode requires a supported browser and HTTPS.';return}try{const reg=await navigator.serviceWorker.ready;state.textContent=reg.active?'✓ Offline guide ready on this device':'Offline files are being prepared.'}catch{state.textContent='Offline availability not yet confirmed.'}}
+if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./sw.js').then(()=>checkCache()).catch(()=>{state.textContent='Offline setup failed. Open through HTTPS.'})}else{state.textContent='Offline caching requires HTTPS hosting (not file://).'}
+document.getElementById('save').onclick=async()=>{if(!('serviceWorker'in navigator)||location.protocol==='file:'){toast('Host over HTTPS to enable offline use');return}try{await navigator.serviceWorker.ready;const keys=await caches.keys();if(keys.some(k=>k.startsWith('tto-seoul-'))){state.textContent='✓ Offline guide ready on this device';toast('Saved for offline use')}else toast('Still preparing offline files')}catch{toast('Could not confirm offline files')}};
+
+// Weather forecast for the two meeting days, using Seoul local dates.
+const WEATHER_DATES=['2026-11-17','2026-11-18'];
+const WEATHER_KEY='tto-seoul-weather-v1';
+const WEATHER_INTERVAL=3*60*60*1000;
+const WEATHER_URL='https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSeoul&forecast_days=16';
+const weatherStatus=document.getElementById('weatherStatus');
+const weatherDays=document.getElementById('weatherDays');
+const weatherLabels={0:['☀️','Clear'],1:['🌤️','Mostly clear'],2:['⛅','Partly cloudy'],3:['☁️','Cloudy'],45:['🌫️','Fog'],48:['🌫️','Fog'],51:['🌦️','Drizzle'],53:['🌦️','Drizzle'],55:['🌧️','Drizzle'],61:['🌧️','Rain'],63:['🌧️','Rain'],65:['🌧️','Heavy rain'],71:['🌨️','Snow'],73:['🌨️','Snow'],75:['❄️','Heavy snow'],80:['🌦️','Showers'],81:['🌧️','Showers'],82:['🌧️','Heavy showers'],95:['⛈️','Thunderstorms'],96:['⛈️','Thunderstorms'],99:['⛈️','Thunderstorms']};
+function cachedWeather(){try{return JSON.parse(localStorage.getItem(WEATHER_KEY)||'null')}catch{return null}}
+function weatherDate(t){return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(t))+' KST'}
+function renderWeather(data,stale=false){
+  if(!data||!Array.isArray(data.days)||!data.days.length){weatherDays.innerHTML='';weatherStatus.textContent='Forecast not available yet. Connect to the internet to load it.';return}
+  weatherDays.innerHTML='';
+  for(const day of data.days){const info=weatherLabels[day.code]||['🌡️','Forecast'];const box=document.createElement('div');box.className='mini';const label=document.createElement('small');label.textContent=day.date==='2026-11-17'?'TUE · 17 NOV':'WED · 18 NOV';const title=document.createElement('h3');title.textContent=info[0]+' '+info[1];const temp=document.createElement('div');temp.className='number';temp.textContent=Math.round(day.high)+'°C / '+Math.round(day.low)+'°C';const rain=document.createElement('p');rain.textContent='High / low · Rain chance: '+(day.rain===null?'Not available':day.rain+'%');box.append(label,title,temp,rain);weatherDays.append(box)}
+  weatherStatus.textContent=(stale?'Offline / saved forecast':'Latest available forecast')+' · Updated '+weatherDate(data.updated);
+}
+async function refreshWeather(force=false){
+  const previous=cachedWeather();
+  if(!navigator.onLine){renderWeather(previous,true);return}
+  if(!force&&previous&&Date.now()-previous.updated<WEATHER_INTERVAL){renderWeather(previous);return}
+  weatherStatus.textContent='Updating forecast…';
+  try{
+    const response=await fetch(WEATHER_URL,{cache:'no-store',signal:AbortSignal.timeout(12000)});
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const json=await response.json();
+    const daily=json.daily;
+    if(!daily||!Array.isArray(daily.time))throw Error('Invalid forecast');
+    const days=WEATHER_DATES.map(date=>{const i=daily.time.indexOf(date);return i<0?null:{date,code:daily.weather_code[i],high:daily.temperature_2m_max[i],low:daily.temperature_2m_min[i],rain:daily.precipitation_probability_max?.[i]??null}}).filter(Boolean);
+    if(days.length!==2)throw Error('Dates not yet in forecast range');
+    if(days.some(d=>!Number.isFinite(d.high)||!Number.isFinite(d.low)))throw Error('Missing temperatures');
+    const data={days,updated:Date.now()};localStorage.setItem(WEATHER_KEY,JSON.stringify(data));renderWeather(data);
+  }catch(e){renderWeather(previous,true);if(previous)weatherStatus.textContent+=' · Update unavailable';else weatherStatus.textContent='Live forecast unavailable. Please try again when online.'}
+}
+document.getElementById('refreshWeather').addEventListener('click',()=>refreshWeather(true));
+window.addEventListener('online',()=>refreshWeather());
+window.addEventListener('offline',()=>renderWeather(cachedWeather(),true));
+renderWeather(cachedWeather(),!navigator.onLine);
+refreshWeather();

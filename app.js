@@ -15,8 +15,8 @@ if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWo
 document.getElementById('save').onclick=async()=>{if(!('serviceWorker'in navigator)||location.protocol==='file:'){toast('Host over HTTPS to enable offline use');return}try{await navigator.serviceWorker.ready;const keys=await caches.keys();if(keys.some(k=>k.startsWith('tto-seoul-'))){state.textContent='✓ Offline guide ready on this device';toast('Saved for offline use')}else toast('Still preparing offline files')}catch{toast('Could not confirm offline files')}};
 
 // Weather forecast for the two meeting days, using Seoul local dates.
-const WEATHER_DATES=['2026-11-17','2026-11-18'];
-const WEATHER_KEY='tto-seoul-weather-v1';
+const WEATHER_DATES=['2026-11-15','2026-11-16','2026-11-17','2026-11-18','2026-11-19'];
+const WEATHER_KEY='tto-seoul-weather-v18';
 const WEATHER_INTERVAL=3*60*60*1000;
 const WEATHER_URL='https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSeoul&forecast_days=16';
 const weatherStatus=document.getElementById('weatherStatus');
@@ -27,7 +27,7 @@ function weatherDate(t){return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/S
 function renderWeather(data,stale=false){
   if(!data||!Array.isArray(data.days)||!data.days.length){weatherDays.innerHTML='';weatherStatus.textContent='Forecast not available yet. Connect to the internet to load it.';return}
   weatherDays.innerHTML='';
-  for(const day of data.days){const info=weatherLabels[day.code]||['🌡️','Forecast'];const box=document.createElement('div');box.className='mini';const label=document.createElement('small');label.textContent=day.date==='2026-11-17'?'TUE · 17 NOV':'WED · 18 NOV';const title=document.createElement('h3');title.textContent=info[0]+' '+info[1];const temp=document.createElement('div');temp.className='number';temp.textContent=Math.round(day.high)+'°C / '+Math.round(day.low)+'°C';const rain=document.createElement('p');rain.textContent='High / low · Rain chance: '+(day.rain===null?'Not available':day.rain+'%');box.append(label,title,temp,rain);weatherDays.append(box)}
+  for(const day of data.days){const info=weatherLabels[day.code]||['🌡️','Forecast'];const box=document.createElement('div');box.className='mini';const label=document.createElement('small');label.textContent=new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'Asia/Seoul'}).format(new Date(day.date+'T12:00:00+09:00')).toUpperCase();const title=document.createElement('h3');title.textContent=info[0]+' '+info[1];const temp=document.createElement('div');temp.className='number';temp.textContent=Math.round(day.high)+'°C / '+Math.round(day.low)+'°C';const rain=document.createElement('p');rain.textContent='High / low · Rain chance: '+(day.rain===null?'Not available':day.rain+'%');box.append(label,title,temp,rain);weatherDays.append(box)}
   weatherStatus.textContent=(stale?'Offline / saved forecast':'Latest available forecast')+' · Updated '+weatherDate(data.updated);
 }
 async function refreshWeather(force=false){
@@ -42,7 +42,7 @@ async function refreshWeather(force=false){
     const daily=json.daily;
     if(!daily||!Array.isArray(daily.time))throw Error('Invalid forecast');
     const days=WEATHER_DATES.map(date=>{const i=daily.time.indexOf(date);return i<0?null:{date,code:daily.weather_code[i],high:daily.temperature_2m_max[i],low:daily.temperature_2m_min[i],rain:daily.precipitation_probability_max?.[i]??null}}).filter(Boolean);
-    if(days.length!==2)throw Error('Dates not yet in forecast range');
+    if(days.length!==WEATHER_DATES.length)throw Error('Dates not yet in forecast range');
     if(days.some(d=>!Number.isFinite(d.high)||!Number.isFinite(d.low)))throw Error('Missing temperatures');
     const data={days,updated:Date.now()};localStorage.setItem(WEATHER_KEY,JSON.stringify(data));renderWeather(data);
   }catch(e){renderWeather(previous,true);if(previous)weatherStatus.textContent+=' · Update unavailable';else weatherStatus.textContent='Live forecast unavailable. Please try again when online.'}
